@@ -1,0 +1,685 @@
+#include <LiquidCrystal.h>
+
+// initialize the library with the numbers of the interface pins
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+const int rLedPin = 10;
+const int bLedPin = 9;
+const int gLedPin = 8;
+const int buttonPinp1 = 13;
+const int buttonPinp2 = 6;
+const int buttonPinm = 7;
+
+//these hold button state for comparing
+//used in answer input and stopping
+//the spinner
+int buttonStatem1 = digitalRead(buttonPinm); //never change
+int buttonStatem2 = 0;
+int buttonStatep11 = digitalRead(buttonPinp1); // never change
+int buttonStatep12 = 0;
+int buttonStatep21 = digitalRead(buttonPinp2); //never change
+int buttonStatep22 = 0;
+
+//these are variables used 
+//in multiple places, using global
+//because it is easier for a prototype
+//final design will hide these in program
+int score1 = 0; //p1 score
+int score2 = 0; //p2 score
+int qAnswer = 0; //aswer to question
+bool p1Turn = true; // keeps track of turn
+bool timesUp = false; //check if ran out of time
+String category = "      Math      ";
+
+void setup() {
+  // set up the LCD's number of columns and rows:
+  lcd.begin(16, 2);
+  //setup the pins to various 
+  pinMode(rLedPin, OUTPUT);
+  pinMode(gLedPin, OUTPUT);
+  pinMode(bLedPin, OUTPUT);
+  pinMode(buttonPinp1, INPUT);
+  pinMode(buttonPinp2, INPUT);
+  pinMode(buttonPinm, INPUT);
+}
+
+//main(), basic structure for game
+void loop() {
+  dispScore();
+  delay(5000);
+  dispSpin();
+  spin();
+  delay(5000);
+  dispQues();
+  //check if ran out of time
+  if (!(timesUp))
+  {
+    dispTurn();
+    delay(3000);
+    enterAns();
+  }
+  else
+  {
+    timesUp = false;
+  }
+  dispWinner();
+}
+
+//looks to see if 3 score was reached by any player 
+//if so announces winner starts new game
+void dispWinner()
+{
+  if (score1 == 3)
+  {
+    lcd.setCursor(0, 0);
+  	lcd.print(" Player 1 wins! ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("                ");
+    delay(10000);
+    newGame();
+  }
+  else if (score2 == 3)
+  {
+    lcd.setCursor(0, 0);
+  	lcd.print(" Player 2 wins! ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("                ");
+    delay(10000);
+    newGame();
+  }
+}
+
+//starts a new game
+void newGame()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("   Starting a   ");
+  lcd.setCursor(0, 1);
+  lcd.print("   new game...  ");
+  delay(3000);
+  score1 = 0;
+  score2 = 0;
+}
+
+//sets RGB color based on inputs
+void RGBcolor(int rNum, int gNum, int bNum)
+{
+  analogWrite(rLedPin, rNum);
+  analogWrite(gLedPin, gNum);
+  analogWrite(bLedPin, bNum);
+}
+
+//sets the color and the category
+void setColor(int color)
+{
+  if (color == 0)
+  {
+    RGBcolor(0, 255, 0);
+    category = "    Biology     ";
+  }
+  else if (color == 1)
+  {
+    RGBcolor(255, 0, 0);
+    category = "    Chemistry   ";
+  }
+  else if (color == 2)
+  {
+    RGBcolor(0, 0, 255);
+    category = " Earth Science  ";
+  }
+  else
+  {
+    RGBcolor(255, 255, 255);
+    category = "      Math      ";
+  }
+}
+
+//displays scoreboard
+void dispScore()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("Player 1: ");
+  lcd.print(score1);
+  lcd.print("     ");
+  lcd.setCursor(0, 1);
+  lcd.print("Player 2: ");
+  lcd.print(score2);
+  lcd.print("     ");
+}
+
+//display that instructs how to
+//use button
+void dispSpin()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("Hold mid button ");
+  lcd.setCursor(0, 1);
+  lcd.print("    to begin    ");
+}
+
+//main spinning function, does all
+//by comparing button states
+void spin()
+{
+  int counter = 0;
+  buttonStatem2 = digitalRead(buttonPinm);
+  while (buttonStatem1 == buttonStatem2){
+  	buttonStatem2 = digitalRead(buttonPinm);
+  	setColor(counter);
+  	delay(500);
+  	counter++;
+  	if (counter > 4)
+  	{
+    	counter = 0;
+  	}
+  }
+  lcd.setCursor(0, 0);
+  lcd.print("    Category:   ");
+  lcd.setCursor(0, 1);
+  lcd.print(category);
+}
+
+//displays who's turn it is
+void dispTurn()
+{
+  if (p1Turn)
+  {
+    lcd.setCursor(0, 0);
+  	lcd.print("Player 1's turn ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("                ");
+  }
+  else
+  {
+    lcd.setCursor(0, 0);
+  	lcd.print("Player 2's turn ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("                ");
+  }
+}
+
+//user answer input, uses buttons to
+//highlight answer on screen etc
+void enterAns()
+{
+  //initial read idk why this
+  //is necessary but arduino is
+  //being annoying, will try
+  //to fix in future
+  int uAns = 1;
+  buttonStatem2 = digitalRead(buttonPinm); //mid
+  buttonStatep12 = digitalRead(buttonPinp1); //left
+  buttonStatep22 = digitalRead(buttonPinp2); //right
+  ansIn(uAns);
+  while (buttonStatem1 == buttonStatem2)
+  {
+    //check for button being pressed
+    buttonStatem2 = digitalRead(buttonPinm);   //mid button
+    buttonStatep12 = digitalRead(buttonPinp1); //left button
+    buttonStatep22 = digitalRead(buttonPinp2); //right button
+    if (buttonStatem1 != buttonStatem2)
+    {
+      if (uAns == qAnswer)
+      {
+        lcd.setCursor(0, 0);
+  		lcd.print("You are correct!");
+  		lcd.setCursor(0, 1);
+  		lcd.print("You get +1 point");
+        if (p1Turn)
+        {
+          score1++;
+          p1Turn = false;
+        }
+        else
+        {
+          score2++;
+          p1Turn = true;
+        }
+        delay(5000);
+      }
+      else
+      {
+        lcd.setCursor(0, 0);
+  		lcd.print("You're incorrect");
+  		lcd.setCursor(0, 1);
+  		lcd.print("                ");
+        if (p1Turn)
+        {
+          p1Turn = false;
+        }
+        else
+        {
+          p1Turn = true;
+        }
+        delay(5000);
+      }
+    }
+    else if (buttonStatep11 != buttonStatep12)
+    {
+      uAns--;
+      if (uAns < 1)
+      {
+        uAns = 4;
+      }
+      ansIn(uAns);
+      delay(500);
+    }
+    else if (buttonStatep21 != buttonStatep22)
+    {
+      uAns++;
+      if (uAns > 4)
+      {
+        uAns = 1;
+      }
+      ansIn(uAns);
+      delay(500);
+    }
+  }
+}
+
+//prints to screen answer selection
+//based on the sent param
+void ansIn(int user)
+{
+  if (user == 1)
+  {
+  	lcd.setCursor(0, 0);
+  	lcd.print("    Answer:     ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("  |1| 2  3  4   ");
+  }
+  else if (user == 2)
+  {
+    lcd.setCursor(0, 0);
+  	lcd.print("    Answer:     ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("   1 |2| 3  4   ");
+  }
+  else if (user == 3)
+  {
+    lcd.setCursor(0, 0);
+  	lcd.print("    Answer:     ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("   1  2 |3| 4   ");
+  }
+  else
+  {
+    lcd.setCursor(0, 0);
+  	lcd.print("    Answer:     ");
+  	lcd.setCursor(0, 1);
+  	lcd.print("   1  2  3 |4|  ");
+  }
+}
+
+bool checkInput(int ms)
+{
+  for (int i = 0; i < (ms/100); i++)
+  {
+    buttonStatep12 = digitalRead(buttonPinp1); //left
+    buttonStatep22 = digitalRead(buttonPinp2); //right
+    if (buttonStatep11 != buttonStatep12)
+    {
+      p1Turn = true;
+      return true;
+    }
+    else if (buttonStatep21 != buttonStatep22)
+    {
+      p1Turn = false;
+      return true;
+    }
+    delay(100);
+  }
+  return false;
+}
+
+//just displays the word answers on screen,
+//used in displaying questions
+void dispAnswers()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("    Answers:    ");
+  lcd.setCursor(0, 1);
+  lcd.print("                ");
+}
+
+//display if ran out of time, 
+//set flag to true
+void timeIsUp()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("  Time   is   ");
+  lcd.setCursor(0, 1);
+  lcd.print("      UP!     ");
+  timesUp = true;
+  delay(3000);
+}
+
+//big annoying question list due to 
+//size limitations in arduino storage
+void dispQues()
+{
+  int rand = millis() % 3;
+  if (category.equals("    Biology     "))
+  {
+    if (rand == 0)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("What is biology?");
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. Study of life");
+      lcd.setCursor(0, 1);
+      lcd.print("2. Study of Man");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. Study of Dead");
+        lcd.setCursor(0, 1);
+        lcd.print("4. Study of Mass");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 1;
+    }
+    if (rand == 1) 
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("What holds your ");
+      lcd.setCursor(0, 1);
+      lcd.print("     genes      ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. RNA          ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. mRNA         ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. DNA          ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. tRNA         ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 3;
+    }
+    if (rand == 2)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("What is the last");
+      lcd.setCursor(0, 1);
+      lcd.print(" mitosis stage  ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. Prophase     ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. Anaphase     ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. Metaphase    ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. Telophase    ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 4;
+    }
+  }
+  else if (category.equals("    Chemistry   "))
+  {
+    if (rand == 0)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("What element is ");
+      lcd.setCursor(0, 1);
+      lcd.print("       Na       ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. Neon         ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. Sodium       ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. Nitrogen     ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. Lead         ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 2;
+    }
+    if (rand == 1)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("   Which has a  ");
+      lcd.setCursor(0, 1);
+      lcd.print("negative charge ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. Ion          ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. Proton       ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. Neutron      ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. Electron     ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 4;
+    }
+    if (rand == 2)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("How many protons");
+      lcd.setCursor(0, 1);
+      lcd.print("are in hydrogen ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. One          ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. Two          ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. None         ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. Infinite     ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 1;
+    }
+  }
+  else if (category.equals(" Earth Science  "))
+  {
+    if (rand == 0)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("  The study of  ");
+      lcd.setCursor(0, 1);
+      lcd.print("  atmosphere is ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. Meteor       ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. Metroid      ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. Meteorology  ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. Astrology    ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 3;
+    }
+    if (rand == 1)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("  Earthquakes   ");
+      lcd.setCursor(0, 1);
+      lcd.print("occur when rocks");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. bend         ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. break        ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. compress     ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. stretch      ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 1;
+    }
+    if (rand == 2)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print("  A rock is a...");
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. compound     ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. element      ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. mixture      ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. atom         ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 3;
+    }
+  }
+  else
+  {
+    if (rand == 0)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print(" x=2, y=3, z=4  ");
+      lcd.setCursor(0, 1);
+      lcd.print("find x^2+y^2+z^2");
+      delay(10000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. 29           ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. 18           ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. 144          ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. -144         ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 1;
+    }
+    if (rand == 1)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print(" How much is 3  ");
+      lcd.setCursor(0, 1);
+      lcd.print("     dozens     ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. 12           ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. 39           ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. 36           ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. 24           ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 3;
+    }
+    if (rand == 2)
+    {
+      lcd.setCursor(0, 0);
+      lcd.print(" 7x^2 - 3xy is  ");
+      lcd.setCursor(0, 1);
+      lcd.print("                ");
+      delay(5000);
+      dispAnswers();
+      delay(3000);
+      lcd.setCursor(0, 0);
+      lcd.print("1. A bicycle    ");
+      lcd.setCursor(0, 1);
+      lcd.print("2. A biped      ");
+      if(!(checkInput(3000)))
+      {
+        lcd.setCursor(0, 0);
+        lcd.print("3. A binocular  ");
+        lcd.setCursor(0, 1);
+        lcd.print("4. A binomial   ");
+        if(!(checkInput(6000)))
+        {
+          timeIsUp();
+        }
+      }
+      qAnswer = 4;
+    }
+  }
+}
